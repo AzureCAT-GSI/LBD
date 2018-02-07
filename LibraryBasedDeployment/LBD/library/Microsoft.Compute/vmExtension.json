@@ -1,0 +1,53 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "vmName": {
+      "type": "string"
+    },
+    "sasToken": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "extensionFriendlyName": {
+      "type": "string"
+    },
+    "extensionType": {
+      "type": "string",
+      "allowedValues": [
+        "dsc"
+      ]
+    },
+    "settings": {
+      "type": "object"
+    },
+    "protectedSettings": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('extensionType'),'dsc')]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[if(equals(parameters('extensionType'),'dsc'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),'invalid1')]",
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publisher": "Microsoft.Powershell",
+        "type": "DSC",
+        "typeHandlerVersion": "2.73",
+        "autoUpgradeMinorVersion": true,
+        "settings": "[parameters('settings')]",
+        "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

@@ -1,0 +1,537 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_deploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated deployment name"
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated container in staging storage account to receive post-build staging folder upload"
+      }
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Auto-generated token to access _artifactsLocation"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the resources of this template will be deployed to"
+      },
+      "defaultValue": "eastus"
+    },
+    "iisVmNamePrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "VM name prefix for IIS Servers"
+      },
+      "defaultValue": "IIS"
+    },
+    "iisVmSize": {
+      "type": "string",
+      "metadata": {
+        "description": "The size of the IIS Servers"
+      },
+      "defaultValue": "Standard_D1_V2"
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the Administrator of the new VM and Domain"
+      },
+      "defaultValue": "localadmin"
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password for the Administrator account of the VMs and Domain Admin"
+      }
+    },
+    "iisVmCount": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "Number of VMs to deploy"
+      },
+      "maxValue": 100
+    },
+    "vnetIpAddressSpace": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address space of the vnet."
+      },
+      "defaultValue": "192.168.0.0/19"
+    },
+    "vnetSubnet1AddressRange": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address range of the first subnet."
+      },
+      "defaultValue": "192.168.1.0/24"
+    },
+    "vnetSubnet2AddressRange": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address range of the Gateway subnet."
+      },
+      "defaultValue": "192.168.0.0/24"
+    }
+  },
+  "variables": {
+    "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "baseUrl": "[parameters('_artifactsLocation')]",
+    "getRefUri": "[concat(variables('baseUrl'),'/library/other/getReference.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVnetDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVnetDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVmDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "changeVmPrivateIpAddressTypeUri": "[concat(variables('baseUrl'),'/library/other/changeVmIpAddressType.json',parameters('_artifactsLocationSasToken'))]",
+    "avSetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/availabilitySet.json',parameters('_artifactsLocationSasToken'))]",
+    "vmBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
+    "vmExtensionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
+    "vNetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
+    "nicBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkInterface.json',parameters('_artifactsLocationSasToken'))]",
+    "nsgBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+    "publicIpAddressBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/publicIp.json',parameters('_artifactsLocationSasToken'))]",
+    "lbBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/loadBalancer.json',parameters('_artifactsLocationSasToken'))]",
+    "vpnGatewayBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vpnGateway.json',parameters('_artifactsLocationSasToken'))]",
+    "s2sConnectionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vnet2VnetConnection.json',parameters('_artifactsLocationSasToken'))]",
+
+    "avSetName": "IIS-avSet",
+
+    "imageInfo": {
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2016-Datacenter",
+      "version": "latest"
+    },
+
+    "vnetName": "vnet2",
+    "vnetsubnet1Name": "App-SN",
+    "vnetsubnet2Name": "GatewaySubnet",
+    "vnetId": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+    "vnetSubnet1Id": "[concat(variables('vnetId'),'/subnets/',variables('vnetsubnet1Name'))]",
+
+    "nsgName": "App-nsg",
+    "nsgId": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "nsgSecurityRules": [
+      {
+        "name": "allow-rdp",
+        "properties": {
+          "access": "Allow",
+          "description": "Allow inbound RDP from anywhere",
+          "destinationAddressPrefix": "*",
+          "destinationPortRange": "3389",
+          "direction": "Inbound",
+          "priority": 100,
+          "protocol": "Tcp",
+          "sourceAddressPrefix": "*",
+          "sourcePortRange": "*"
+        }
+      },
+      {
+        "name": "allow-80",
+        "properties": {
+          "access": "Allow",
+          "description": "Allow inbound 80 from anywhere",
+          "destinationAddressPrefix": "*",
+          "destinationPortRange": "80",
+          "direction": "Inbound",
+          "priority": 200,
+          "protocol": "Tcp",
+          "sourceAddressPrefix": "*",
+          "sourcePortRange": "*"
+        }
+      }
+    ],
+
+    "iisInstallUrl": "[concat(variables('baseUrl'),'/dsc/IISInstall.zip')]",
+    "iisConfigurationFunction": "IISInstall.ps1\\IISInstall",
+    "iisSettings": {
+      "modulesUrl": "[variables('iisInstallUrl')]",
+      "sasToken": "[parameters('_artifactsLocationSasToken')]",
+      "wmfVersion": "5.0",
+      "configurationFunction": "[variables('iisConfigurationFunction')]"
+    },
+    
+    "lbPipName": "App-LB-PIP",
+    "lbName": "App-Lb",
+    "lbFeName": "FE01",
+    "lbBeName": "BE01",
+    "lbProbeName": "httpProbe",
+    "lbProbes": [
+      {
+        "name": "[variables('lbProbeName')]",
+        "properties": {
+          "protocol": "Http",
+          "port": 80,
+          "intervalInSeconds": 10,
+          "numberOfProbes": 2,
+          "requestPath": "/"
+        }
+      }
+    ],
+    "lbRules": [
+      {
+        "name": "http",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lbName')), '/frontendIPConfigurations/',variables('lbFeName'))]"
+          },
+          "backendAddressPool": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lbName')), '/backendAddressPools/',variables('lbBeName'))]"
+          },
+          "protocol": "Tcp",
+          "frontendPort": 80,
+          "backendPort": 80,
+          "enableFloatingIP": false,
+          "idleTimeoutInMinutes": 5,
+          "probe": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lbName')), '/probes/',variables('lbProbeName'))]"
+          }
+        }
+      }
+    ],
+    "lbNatRules": {
+      "copy": [
+        {
+          "name": "lbNatCopy",
+          "count": "[parameters('iisVmCount')]",
+          "input": {
+            "name": "[concat('natRule',copyIndex('lbNatCopy',1))]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lbName')), '/frontendIPConfigurations/',variables('lbFeName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPort": "[add(4000,copyIndex('lbNatCopy'))]",
+              "backendPort": 3389,
+              "enableFloatingIP": false
+            }
+          }
+        }
+      ]
+    }
+
+  },
+  "resources": [
+    {
+      "condition": true,
+      "comments": "Availability - Deploy 1 Managed Disk Aligned Availability Set, using default update and fault domain count",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('avSetName'),'-avSetDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('avSetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "availabilitySetName": {
+            "value": "[variables('avSetName')]"
+          },
+          "managedDisksAligned": {
+            "value": "yes"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Network Security Group that enables RDP and HTTP 80",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'-nsgDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nsgBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          },
+          "securityRules": {
+            "value": "[variables('nsgSecurityRules')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Virtual Network with two subnets (Infrastructure and GatewaySubnet)",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'-vNetDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'-nsgDeployment')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vNetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "virtualNetworkName": {
+            "value": "[variables('vnetName')]"
+          },
+          "addressPrefixes": {
+            "value": [
+              "[parameters('vnetIpAddressSpace')]"
+            ]
+          },
+          "subnets": {
+            "value": [
+              {
+                "name": "[variables('vnetsubnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[parameters('vnetSubnet1AddressRange')]",
+                  "networkSecurityGroup": {
+                    "id": "[variables('nsgId')]"
+                  }
+                }
+              },
+              {
+                "name": "[variables('vnetsubnet2Name')]",
+                "properties": {
+                  "addressPrefix": "[parameters('vnetSubnet2AddressRange')]"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Public IP Address - Deploy 1 public IP address static for the load balancer",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lbPipName'),'-pipDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('publicIpAddressBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "publicIpAddressName": {
+            "value": "[variables('lbPipName')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "External Load Balancer - Deploy an external load balancer with static public ip, 1 LB rule and n RDP port Nat Rule via copy attribute variable based on iisVmCount parameter",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lbName'),'-elbDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('lbPipName'),'-pipDeployment')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('lbBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "externalLoadBalancer": {
+            "value": "yes"
+          },
+          "lbName": {
+            "value": "[variables('lbName')]"
+          },
+          "lbFrontendName": {
+            "value": "[variables('lbFeName')]"
+          },
+          "lbBackendName": {
+            "value": "[variables('lbBeName')]"
+          },
+          "lbRules": {
+            "value": "[variables('lbRules')]"
+          },
+          "natRules": {
+            "value": "[variables('lbNatRules').lbNatCopy]"
+          },
+          "publicIpAddressId": {
+            "value": "[resourceid('Microsoft.Network/publicIPAddresses',concat(variables('lbPipName')))]"
+          },
+          "probes": {
+            "value": "[variables('lbProbes')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Virtual Machine - Multiple Virtual Machines with provided name, no data disk, with avset, with LB Rule, with LB NAT Rule, no NSG, no DNS settings, and dynamic Ip, no public ip address",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmDeployment-',copyIndex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('avSetName'),'-avSetDeployment')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'-vNetDeployment')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('lbName'),'-elbDeployment')]"
+      ],
+      "copy": {
+        "name": "iisVmCopy",
+        "count": "[parameters('iisVmCount')]"
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "[concat(parameters('iisVmNamePrefix'),copyIndex(1))]"
+          },
+          "vmSize": {
+            "value": "[parameters('iisVmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "yes"
+          },
+          "avSetId": {
+            "value": "[resourceId('Microsoft.Compute/availabilitySets',variables('avSetName'))]"
+          },
+          "subnetId": {
+            "value": "[variables('vnetSubnet1Id')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lbRules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "yes"
+          },
+          "loadBalancerNatRuleId": {
+            "value": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lbName')), '/inboundNatRules/',variables('lbNatRules').lbNatCopy[copyIndex()].name)]"
+          },
+          "attachNsg": {
+            "value": "no"
+          },
+          "configureDnsServers": {
+            "value": "no"
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "DSC - Deploying IIS role on VMs",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('iisVmNamePrefix'),copyIndex(),'-dsc')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "iisVmCopy"
+      ],
+      "copy": {
+        "name": "iisDscCfgCopy",
+        "count": "[parameters('iisVmCount')]"
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmExtensionBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmName": {
+            "value": "[concat(parameters('iisVmNamePrefix'),copyIndex(1))]"
+          },
+          "extensionFriendlyName": {
+            "value": "iisconfig"
+          },
+          "extensionType": {
+            "value": "dsc"
+          },
+          "settings": {
+            "value": "[variables('iisSettings')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

@@ -1,0 +1,117 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentUniqueString": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "lbName": {
+      "type": "string"
+    },
+    "lbFrontendName": {
+      "type": "string",
+      "defaultValue": "frontendPool"
+    },
+    "lbBackendName": {
+      "type": "string",
+      "defaultValue": "backendPool"
+    },
+    "lbRules": {
+      "type": "array"
+    },
+    "natRules": {
+      "type": "array"
+    },
+    "publicIpAddressId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "probes": {
+      "type": "array"
+    },
+    "externalLoadBalancer": {
+      "type": "string",
+      "allowedValues": [
+        "yes",
+        "no"
+      ],
+      "defaultValue": "yes"
+    },
+    "subnetId": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "privateIpAddress": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('externalLoadBalancer'),'yes')]",
+      "comments": "External Load Balancer Configuration",
+      "apiVersion": "2017-06-01",
+      "name": "[if(equals(parameters('externalLoadBalancer'),'yes'),parameters('lbName'),'invalid1')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[parameters('location')]",
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "[parameters('lbFrontendName')]",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[parameters('publicIpAddressId')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[parameters('lbBackendName')]"
+          }
+        ],
+        "loadBalancingRules": "[parameters('lbRules')]",
+        "probes": "[parameters('probes')]",
+        "inboundNatRules": "[parameters('natRules')]"
+      }
+    },
+    {
+      "condition": "[equals(parameters('externalLoadBalancer'),'no')]",
+      "comments": "Internal Load Balancer Configuration",
+      "apiVersion": "2017-06-01",
+      "name": "[if(equals(parameters('externalLoadBalancer'),'no'),parameters('lbName'),'invalid1')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[parameters('location')]",
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "loadBalancerFrontEnd",
+            "properties": {
+              "subnet": {
+                "id": "[parameters('subnetId')]"
+              },
+              "privateIPAddress": "[parameters('privateIpAddress')]"
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[parameters('lbBackendName')]"
+          }
+        ],
+        "loadBalancingRules": "[parameters('lbRules')]",
+        "probes": "[parameters('probes')]",
+        "inboundNatRules": "[parameters('natRules')]"
+      }
+    }
+  ],
+  "outputs": {
+    "iislbResourceId": {
+      "value": "[resourceId('Microsoft.Network/loadBalancers',parameters('lbName'))]",
+      "type": "string"
+    }
+  }
+}

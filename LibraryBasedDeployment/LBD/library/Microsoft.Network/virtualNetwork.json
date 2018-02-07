@@ -1,0 +1,64 @@
+﻿{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentUniqueString": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "virtualNetworkName": {
+      "type": "string"
+    },
+    "addressPrefixes": {
+      "type": "array",
+      "defaultValue": [
+        ""
+      ]
+    },
+    "subnets": {
+      "type": "array"
+    },
+    "configureDnsServers": {
+      "type": "string",
+      "allowedValues": [
+        "yes",
+        "no"
+      ],
+      "defaultValue": "no"
+    },
+    "dnsServers": {
+      "type": "array",
+      "defaultValue": [
+        ""
+      ]
+    }
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "comments": "Virtual Network",
+      "apiVersion": "2017-06-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('virtualNetworkName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": "[parameters('addressPrefixes')]"
+        },
+        "subnets": "[parameters('subnets')]",
+        "dhcpOptions": {
+          "dnsServers": "[if(equals(parameters('configureDnsServers'),'yes'),parameters('dnsServers'),json('null'))]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "vnetId": {
+      "value": "[resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName'))]",
+      "type": "string"
+    }
+  }
+}

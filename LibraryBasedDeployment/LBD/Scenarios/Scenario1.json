@@ -1,0 +1,407 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_deploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated deployment name"
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated container in staging storage account to receive post-build staging folder upload"
+      }
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Auto-generated token to access _artifactsLocation"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the resources of this template will be deployed to"
+      },
+      "defaultValue": "westus"
+    },
+    "dcVmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Domain Controller"
+      },
+      "defaultValue": "dc"
+    },
+    "dcVmSize": {
+      "type": "string",
+      "metadata": {
+        "description": "The size of the Domain Controller"
+      },
+      "defaultValue": "Standard_D1_V2"
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the Administrator of the new VM and Domain"
+      },
+      "defaultValue": "localadmin"
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password for the Administrator account of the VMs and Domain Admin"
+      }
+    },
+    "domainName": {
+      "type": "string",
+      "metadata": {
+        "description": "The FQDN of the AD Domain created "
+      },
+      "defaultValue": "contosoAD.com"
+    },
+    "vnetIpAddressSpace": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address space of the vnet."
+      },
+      "defaultValue": "10.0.0.0/19"
+    },
+    "vnetSubnet1AddressRange": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address range of the first subnet."
+      },
+      "defaultValue": "10.0.1.0/24"
+    },
+    "vnetSubnet2AddressRange": {
+      "type": "string",
+      "metadata": {
+        "description": "Ip address range of the Gateway subnet."
+      },
+      "defaultValue": "10.0.0.0/24"
+    },
+    "dcNicIPAddress": {
+      "type": "string",
+      "metadata": {
+        "description": "Private IP address of the new Domain Controller"
+      },
+      "defaultValue": "10.0.1.4"
+    }
+  },
+  "variables": {
+    "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "baseUrl": "[parameters('_artifactsLocation')]",
+    "updateVmDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "vmBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
+    "vmExtensionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
+    "vNetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
+    "nsgBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+
+    "imageInfo": {
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2016-Datacenter",
+      "version": "latest"
+    },
+
+    "vnetName": "vnet",
+    "vnetsubnet1Name": "infrastructure-SN",
+    "vnetsubnet2Name": "GatewaySubnet",
+    "vnetId": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+    "vnetSubnet1Id": "[concat(variables('vnetId'),'/subnets/',variables('vnetsubnet1Name'))]",
+
+    "nsgName": "domainController-nsg",
+    "nsgId": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "nsgSecurityRules": [
+      {
+        "name": "allow-rdp",
+        "properties": {
+          "access": "Allow",
+          "description": "Allow inbound RDP from anywhere",
+          "destinationAddressPrefix": "*",
+          "destinationPortRange": "3389",
+          "direction": "Inbound",
+          "priority": 100,
+          "protocol": "Tcp",
+          "sourceAddressPrefix": "*",
+          "sourcePortRange": "*"
+        }
+      }
+    ],
+
+    "dcProvisioningUrl": "[concat(variables('baseUrl'),'/dsc/ProvisionDcVm.zip')]",
+    "dcPromotionUrl": "[concat(variables('baseUrl'),'/dsc/DCConfig.zip')]",
+
+    "dcConfigurationFunction1": "ProvisionDcVm.ps1\\ProvisionDcVm",
+    "dsc1Settings": {
+      "modulesUrl": "[variables('dcProvisioningUrl')]",
+      "sasToken": "[parameters('_artifactsLocationSasToken')]",
+      "wmfVersion": "5.0",
+      "configurationFunction": "[variables('dcConfigurationFunction1')]"
+    },
+
+    "dcConfigurationFunction2": "DCConfig.ps1\\DcConfig",
+
+    "dsc2Settings": {
+      "modulesUrl": "[variables('dcPromotionUrl')]",
+      "sasToken": "[parameters('_artifactsLocationSasToken')]",
+      "configurationFunction": "[variables('dcConfigurationFunction2')]",
+      "properties": {
+        "domainName": "[parameters('domainName')]",
+        "dataDiskNumber": 2,
+        "dataDiskDriveLetter": "F",
+        "domainAdminCredentials": {
+          "userName": "[parameters('adminUserName')]",
+          "password": "PrivateSettingsRef:domainAdminPassword"
+        }
+      }
+    },
+    "dsc2protectedSettings": {
+      "items": {
+        "domainAdminPassword": "[parameters('AdminPassword')]"
+      }
+    }
+  },
+  "resources": [
+    {
+      "condition": true,
+      "comments": "Virtual Network with two subnets (Infrastructure and GatewaySubnet)",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vNetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "virtualNetworkName": {
+            "value": "[variables('vnetName')]"
+          },
+          "addressPrefixes": {
+            "value": [
+              "[parameters('vnetIpAddressSpace')]"
+            ]
+          },
+          "subnets": {
+            "value": [
+              {
+                "name": "[variables('vnetsubnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[parameters('vnetSubnet1AddressRange')]"
+                }
+              },
+              {
+                "name": "[variables('vnetsubnet2Name')]",
+                "properties": {
+                  "addressPrefix": "[parameters('vnetSubnet2AddressRange')]"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Network Security Group that enables RDP",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nsgBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          },
+          "securityRules": {
+            "value": "[variables('nsgSecurityRules')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Virtual Machine - Domain Controller with provided name, 1 data disk, with public IP, no avset, no LB Rule, no LB NAT Rule, with NSG, no DNS settings, and static IP address",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('dcVmName'),'-vmDeployment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "[parameters('dcVmName')]"
+          },
+          "vmSize": {
+            "value": "[parameters('dcVmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "yes"
+          },
+          "dataDiskCount": {
+            "value": 1
+          },
+          "dataDiskSizeGb": {
+            "value": 30
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          },
+          "subnetId": {
+            "value": "[variables('vnetSubnet1Id')]"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "privateIpAddress": {
+            "value": "[parameters('dcNicIPAddress')]"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "no"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "DSC - Completing DC provisioning steps - Installing Roles and setting up data disk",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('dcVmName'),'dsc1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',parameters('dcVmName'),'-vmDeployment')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmExtensionBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmName": {
+            "value": "[parameters('dcVmName')]"
+          },
+          "extensionFriendlyName": {
+            "value": "dcconfig"
+          },
+          "extensionType": {
+            "value": "dsc"
+          },
+          "settings": {
+            "value": "[variables('dsc1Settings')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "DSC - Completing DC provisioning steps - Promoting vm as Domain Controller",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('dcVmName'),'dsc2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',parameters('dcVmName'),'dsc1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmExtensionBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmName": {
+            "value": "[parameters('dcVmName')]"
+          },
+          "extensionFriendlyName": {
+            "value": "dcconfig"
+          },
+          "extensionType": {
+            "value": "dsc"
+          },
+          "settings": {
+            "value": "[variables('dsc2Settings')]"
+          },
+          "protectedSettings": {
+            "value": "[variables('dsc2protectedSettings')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

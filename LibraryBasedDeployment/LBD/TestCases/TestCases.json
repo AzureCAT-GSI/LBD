@@ -1,0 +1,2099 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_deploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated deployment name"
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated container in staging storage account to receive post-build staging folder upload"
+      }
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Auto-generated token to access _artifactsLocation"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "southcentralus",
+      "metadata": {
+        "description": "Location where Virtual Machines will be deployed"
+      }
+    },
+    "vmNamePrefix": {
+      "type": "string",
+      "defaultValue": "CZEPDWES",
+      "metadata": {
+        "description": "Virtual Machine Prefix, end result will <prefix>001, <prefix>002, etc."
+      }
+    },
+    "vmCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "maxValue": 50,
+      "metadata": {
+        "description": "Number of Virtual Machines to be deployed, this template supports a maximum of 50."
+      }
+    },
+    "adminUserName": {
+      "type": "string",
+      "defaultValue": "ContosoAdmin",
+      "metadata": {
+        "description": "Local administrator of the Virtual Machine, this name cannot be well known names, e.g. admin, administrator, root, etc."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Local administrator password, this must have a minimum of 12 characters."
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2_V2",
+      "metadata": {
+        "description": "Virtual Machine size"
+      }
+    }
+  },
+  "variables": {
+    "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "baseUrl": "[parameters('_artifactsLocation')]",
+    "getRefUri": "[concat(variables('baseUrl'),'/library/other/getReference.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVnetDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVnetDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVmDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "changeVmPrivateIpAddressTypeUri": "[concat(variables('baseUrl'),'/library/other/changeVmIpAddressType.json',parameters('_artifactsLocationSasToken'))]",
+    "avSetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/availabilitySet.json',parameters('_artifactsLocationSasToken'))]",
+    "vmBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
+    "vNetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
+    "nicBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkInterface.json',parameters('_artifactsLocationSasToken'))]",
+    "nsgBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+    "publicIpAddressBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/publicIp.json',parameters('_artifactsLocationSasToken'))]",
+    "lbBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/loadBalancer.json',parameters('_artifactsLocationSasToken'))]",
+    "vpnGatewayBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vpnGateway.json',parameters('_artifactsLocationSasToken'))]",
+    "s2sConnectionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vnet2VnetConnection.json',parameters('_artifactsLocationSasToken'))]",
+    "avSetPrefix": "avSet",
+    "avSetPrefix1": "classicAvSet",
+    "imageInfo": {
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2016-Datacenter",
+      "version": "latest"
+    },
+    "vnetName": "vnet",
+    "vnet1Name": "vnet1",
+    "vnet2Name": "vnet2",
+    "vnet2Subnet1Name": "infraSubnet",
+    "vnet2Subnet1AddressPrefix": "192.168.0.0/24",
+    "vnet2Subnet2Name": "GatewaySubnet",
+    "vnet2Subnet2AddressPrefix": "192.168.1.0/24",
+    "subnetName": "dmz",
+    "subnet1Name": "dmz",
+    "subnet1AddressPrefix": "10.0.0.0/24",
+    "subnet2Name": "beSubnet",
+    "subnet2AddressPrefix": "10.0.1.0/24",
+    "subnet3Name": "GatewaySubnet",
+    "subnet3AddressPrefix": "10.0.2.0/24",
+    "vnetId": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+    "subnetId": "[concat(variables('vnetId'),'/subnets/',variables('subnetName'))]",
+    "nsgName": "nsg",
+    "nsgId": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+    "nsgSecurityRules": [
+      {
+        "name": "allow-rdp",
+        "properties": {
+          "access": "Allow",
+          "description": "Allow inbound RDP from anywhere",
+          "destinationAddressPrefix": "*",
+          "destinationPortRange": "3389",
+          "direction": "Inbound",
+          "priority": 100,
+          "protocol": "Tcp",
+          "sourceAddressPrefix": "*",
+          "sourcePortRange": "*"
+        }
+      }
+    ],
+    "lbPip": "elbPip",
+    "lb1Name": "elb1",
+    "lb1feName": "frontendPool",
+    "lb1beName": "backendPool",
+    "lb1probeName": "httpProbe",
+    "lbProbes": [
+      {
+        "name": "[variables('lb1probeName')]",
+        "properties": {
+          "protocol": "Http",
+          "port": 80,
+          "intervalInSeconds": 10,
+          "numberOfProbes": 2,
+          "requestPath": "/"
+        }
+      }
+    ],
+    "lbRules": [
+      {
+        "name": "http",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/frontendIPConfigurations/',variables('lb1feName'))]"
+          },
+          "backendAddressPool": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/backendAddressPools/',variables('lb1beName'))]"
+          },
+          "protocol": "Tcp",
+          "frontendPort": 80,
+          "backendPort": 80,
+          "enableFloatingIP": false,
+          "idleTimeoutInMinutes": 5,
+          "probe": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/probes/',variables('lb1probeName'))]"
+          }
+        }
+      }
+    ],
+    "natRulesSingleVm": [
+      {
+        "name": "natRule1",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/frontendIPConfigurations/',variables('lb1feName'))]"
+          },
+          "protocol": "tcp",
+          "frontendPort": 4000,
+          "backendPort": 3389,
+          "enableFloatingIP": false
+        }
+      },
+      {
+        "name": "natRule2",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/frontendIPConfigurations/',variables('lb1feName'))]"
+          },
+          "protocol": "tcp",
+          "frontendPort": 4001,
+          "backendPort": 3389,
+          "enableFloatingIP": false
+        }
+      },
+      {
+        "name": "natRule3",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/frontendIPConfigurations/',variables('lb1feName'))]"
+          },
+          "protocol": "tcp",
+          "frontendPort": 4002,
+          "backendPort": 3389,
+          "enableFloatingIP": false
+        }
+      }
+    ],
+    "lb2Pip": "elbPip",
+    "lb2Name": "elb2",
+    "lb2feName": "frontendPool",
+    "lb2beName": "backendPool",
+    "lb2probeName": "httpProbe",
+    "lb2Probes": [
+      {
+        "name": "[variables('lb2probeName')]",
+        "properties": {
+          "protocol": "Http",
+          "port": 80,
+          "intervalInSeconds": 10,
+          "numberOfProbes": 2,
+          "requestPath": "/"
+        }
+      }
+    ],
+    "lb2Rules": [
+      {
+        "name": "http",
+        "properties": {
+          "frontendIPConfiguration": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb2Name')), '/frontendIPConfigurations/',variables('lb2feName'))]"
+          },
+          "backendAddressPool": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb2Name')), '/backendAddressPools/',variables('lb2beName'))]"
+          },
+          "protocol": "Tcp",
+          "frontendPort": 80,
+          "backendPort": 80,
+          "enableFloatingIP": false,
+          "idleTimeoutInMinutes": 5,
+          "probe": {
+            "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb2Name')), '/probes/',variables('lb2probeName'))]"
+          }
+        }
+      }
+    ],
+    "lb2natRules": {
+      "copy": [
+        {
+          "name": "lb2natCopy",
+          "count": 3,
+          "input": {
+            "name": "[concat('natRule',copyIndex('lb2natCopy',1))]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb2Name')), '/frontendIPConfigurations/',variables('lb2feName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPort": "[add(4000,copyIndex('lb2natCopy'))]",
+              "backendPort": 3389,
+              "enableFloatingIP": false
+            }
+          }
+        }
+      ]
+    },
+    "testCase5VmCount": 3,
+    "gw1PipName": "gwPip1",
+    "gw1Name": "vpnGw1",
+    "gw1Location": "westus",
+    "gw2PipName": "gwPip2",
+    "gw2Name": "vpnGw2",
+    "gw2Location": "[parameters('location')]",
+    "connSharedKey": "mysharedkey123456",
+    "conn1Name": "gw1-to-gw2-connection",
+    "conn2Name": "gw2-to-gw1-connection"
+
+
+  },
+  "resources": [
+    {
+      "condition": false,
+      "comments": "Availability Set Test Cases - Test-Case 1 - Deploy 3 Managed Disk Aligned Availability Sets, using default update and fault domain count",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('avSetPrefix'),padLeft(copyIndex(1),3,'0'),'avSetDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "copy": {
+        "name": "avSetCopy",
+        "count": 3
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('avSetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "availabilitySetName": {
+            "value": "[concat(variables('avSetPrefix'),padLeft(copyIndex(1),3,'0'),'-AVSET')]"
+          },
+          "managedDisksAligned": {
+            "value": "yes"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Availability Set Test Cases - Test-Case 2 - Deploy 1 Classic Availability Sets, using updateDomain count 3 and Fault Domain 3",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('avSetPrefix'),padLeft(copyIndex(1),3,'0'),'avSetDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "copy": {
+        "name": "avSetCopy1",
+        "count": 1
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('avSetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "availabilitySetName": {
+            "value": "[concat(variables('avSetPrefix1'),padLeft(copyIndex(1),3,'0'),'-AVSET')]"
+          },
+          "managedDisksAligned": {
+            "value": "no"
+          },
+          "updateDomains": {
+            "value": 3
+          },
+          "faultDomains": {
+            "value": 3
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Public IP Address - Test-Case 1 - Deploy 1 public IP address static",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lbPip'),'pipDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('publicIpAddressBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "publicIpAddressName": {
+            "value": "[variables('lbPip')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Public IP Address - Test-Case 2 - Deploy 1 public IP address Dynamic",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lbPip'),'pipDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('publicIpAddressBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "publicIpAddressName": {
+            "value": "[concat(variables('lbPip'),'TestCase2')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Network Security Group - Test-Case 1 - Deploy a NSG with RDP rule",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nsgBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nsgName": {
+            "value": "[variables('nsgName')]"
+          },
+          "securityRules": {
+            "value": "[variables('nsgSecurityRules')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "External Load Balancer - Test-Case 1 - Deploy an external load balancer with static public ip, 1 port 80 LB rule and 1 RDP port Nat Rule",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lb1Name'),'elbDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('lbPip'),'pipDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('lbBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "lbName": {
+            "value": "[variables('lb1Name')]"
+          },
+          "lbFrontendName": {
+            "value": "[variables('lb1feName')]"
+          },
+          "lbBackendName": {
+            "value": "[variables('lb1beName')]"
+          },
+          "lbRules": {
+            "value": "[variables('lbRules')]"
+          },
+          "natRules": {
+            "value": "[variables('natRulesSingleVm')]"
+          },
+          "publicIpAddressId": {
+            "value": "[resourceid('Microsoft.Network/publicIPAddresses',variables('lbPip'))]"
+          },
+          "probes": {
+            "value": "[variables('lbProbes')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "External Load Balancer - Test-Case 2 - Deploy an external load balancer with dynamic public ip, 1 LB rule and 3 RDP port Nat Rule via copy attribute variable",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('lb2Name'),'elbDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('lbPip'),'pipDeployment-TestCase2')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('lbBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "lbName": {
+            "value": "[variables('lb2Name')]"
+          },
+          "lbFrontendName": {
+            "value": "[variables('lb2feName')]"
+          },
+          "lbBackendName": {
+            "value": "[variables('lb2beName')]"
+          },
+          "lbRules": {
+            "value": "[variables('lb2Rules')]"
+          },
+          "natRules": {
+            "value": "[variables('lb2natRules').lb2natCopy]"
+          },
+          "publicIpAddressId": {
+            "value": "[resourceid('Microsoft.Network/publicIPAddresses',concat(variables('lbPip'),'TestCase2'))]"
+          },
+          "probes": {
+            "value": "[variables('lb2Probes')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Networks Test Cases - Test-Case 1 - Deploy 1 vnet with three subnets - No NSGs",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vNetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "virtualNetworkName": {
+            "value": "[variables('vnetName')]"
+          },
+          "addressPrefixes": {
+            "value": [
+              "10.0.0.0/20"
+            ]
+          },
+          "subnets": {
+            "value": [
+              {
+                "name": "[variables('subnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('subnet1AddressPrefix')]"
+                }
+              },
+              {
+                "name": "[variables('subnet2Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('subnet2AddressPrefix')]"
+                }
+              },
+              {
+                "name": "[variables('subnet3Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('subnet3AddressPrefix')]"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Networks Test Cases - Test-Case 2 - Deploy 1 vnet with one subnet - 1 NSGs",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnet1Name'),'vNetDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vNetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "virtualNetworkName": {
+            "value": "[variables('vnet1Name')]"
+          },
+          "addressPrefixes": {
+            "value": [
+              "10.1.0.0/20"
+            ]
+          },
+          "subnets": {
+            "value": [
+              {
+                "name": "[variables('subnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('subnet1AddressPrefix')]",
+                  "networkSecurityGroup": {
+                    "id": "[variables('nsgId')]"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Networks Test Cases - Test-Case 3 - Updating existing vNet with DNS",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnet1Name'),'vNetDeployment-TestCase3')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnet1Name'),'vNetDeployment-TestCase2')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('updateVnetDnsUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "vnetId": {
+            "value": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnet1Name'))]"
+          },
+          "dnsServers": {
+            "value": [
+              "10.0.0.1",
+              "10.0.0.2"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Networks Test Cases - Test-Case 4 - Deploy 1 vnet with two subnets - to be used with VPN - No NSGs",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('vnet2Name'),'vNetDeployment-TestCase4')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vNetBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "westus"
+          },
+          "virtualNetworkName": {
+            "value": "[variables('vnet2Name')]"
+          },
+          "addressPrefixes": {
+            "value": [
+              "192.168.0.0/20"
+            ]
+          },
+          "subnets": {
+            "value": [
+              {
+                "name": "[variables('vnet2Subnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('vnet2Subnet1AddressPrefix')]"
+                }
+              },
+              {
+                "name": "[variables('vnet2Subnet2Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('vnet2Subnet2AddressPrefix')]"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 1 - Multiple Nics, no public IP address, no LB Rule, no LB NAT Rule, no NSG, no DNS settings, dynamic Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicCopy",
+        "count": 2
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase1-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 2 - Single Nic with NO public IP address, with LB Rule, with LB NAT Rule, with NSG, with DNS settings, and static Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('lb1Name'),'elbDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicCopy",
+        "count": 1
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase2-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lbRules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "yes"
+          },
+          "loadBalancerNatRuleId": {
+            "value": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/inboundNatRules/',variables('natRulesSingleVm')[1].name)]"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Static"
+          },
+          "privateIpAddress": {
+            "value": "10.0.0.250"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 3 - Multiple Nics with NO public IP address, with LB Rule, no LB NAT Rule, with NSG, with DNS settings, and Dynamic Ip address",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase3')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('lb1Name'),'elbDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicTestCase3Copy",
+        "count": 2
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase3-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lbRules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 4 - Single Nic with public IP address, no LB Rule, no LB NAT Rule, with NSG, with DNS settings, and static Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase4')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicTestCase4Copy",
+        "count": 1
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase4-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Static"
+          },
+          "privateIpAddress": {
+            "value": "10.0.0.251"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 5 - Multiple Nic with static public IP address, no LB Rule, no LB NAT Rule, with NSG, with DNS settings, and dymamic Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase5')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicTestCase5Copy",
+        "count": 2
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase5-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "NICs and Public Ip addresses Test Cases - Test-Case 6 - Multiple Nic with dynamic public IP address, no LB Rule, no LB NAT Rule, with NSG, with DNS settings, and dymamic Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'nicDeployment-TestCase6')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "nicTestCase6Copy",
+        "count": 2
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nicBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nicName": {
+            "value": "[concat('NicTestCase6-',parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0'),'-NIC-',padLeft(copyIndex(1),3,'0'))]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 1 - Single Virtual Machine no data disk, no public Ip, no avset, no NSG, no DNS",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmNamePrefix": {
+            "value": "VmTESTCASE1-"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": "[parameters('vmCount')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 2 - Single Virtual Machine no data disk, with static public Ip, no avset, with NSG, no DNS",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmNamePrefix": {
+            "value": "VmTESTCASE2-"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": "[parameters('vmCount')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Static"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 3 - Single Virtual Machine no data disk, with dynamic public Ip, no avset, with NSG, no DNS",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase3')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('nsgName'),'nsgDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmNamePrefix": {
+            "value": "VmTESTCASE3-"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": "[parameters('vmCount')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          },
+          "usePublicIpAddress": {
+            "value": "yes"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 4 - Single Virtual Machine with data disk, no public IP, with avset, with LB Rule, with LB NAT Rule, with NSG, with DNS settings, and static Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase4')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "avSetCopy1",
+        "[concat(variables('deploymentUniqueString'),'-',variables('lb1Name'),'elbDeployment-TestCase1')]",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vmNamePrefix": {
+            "value": "VmTESTCASE4-"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "yes"
+          },
+          "dataDiskCount": {
+            "value": 2
+          },
+          "dataDiskSizeGb": {
+            "value": 10
+          },
+          "useAvailabilitySet": {
+            "value": "yes"
+          },
+          "avSetId": {
+            "value": "[resourceId('Microsoft.Compute/availabilitySets','avSet001-AVSET')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lbRules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "yes"
+          },
+          "loadBalancerNatRuleId": {
+            "value": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb1Name')), '/inboundNatRules/',variables('natRulesSingleVm')[0].name)]"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Static"
+          },
+          "privateIpAddress": {
+            "value": "10.0.0.253"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 5 - Single Virtual Machine with provided name, no data disk, no public IP, no avset, no LB Rule, no LB NAT Rule, with NSG, no DNS settings, and dynamic Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase5')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "VmTESTCASE5FNL"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "no"
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 6 - Multiple Virtual Machine with provided name, no data disk, no public IP, no avset, no LB Rule, no LB NAT Rule, with NSG, no DNS settings, and dynamic Ip",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase6',copyIndex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "copy": {
+        "name": "testCase6Copy",
+        "count": 2
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "[concat('VmTESTCASE6FNL',copyIndex(1))]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "no"
+          },
+          "useAvailabilitySet": {
+            "value": "no"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "no"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "no"
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 7 - Multiple Virtual Machine with provided name, data disk, with avset, with LB Rule, no LB NAT Rule, with NSG, with DNS settings, and dynamic Ip, no public ip address",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDepl-TC7-',copyIndex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "avSetCopy",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('lb2Name'),'elbDeployment-TestCase2')]"
+      ],
+      "copy": {
+        "name": "testCase7Copy",
+        "count": 3
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "[concat('VmTESTCASE7-',copyIndex(1))]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "yes"
+          },
+          "dataDiskCount": {
+            "value": 2
+          },
+          "dataDiskSizeGb": {
+            "value": 10
+          },
+          "useAvailabilitySet": {
+            "value": "yes"
+          },
+          "avSetId": {
+            "value": "[resourceId('Microsoft.Compute/availabilitySets','avSet002-AVSET')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lb2Rules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "no"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 8 - Multiple Virtual Machine with provided name, data disk, with avset, with LB Rule, with LB NAT Rule, with NSG, with DNS settings, and dynamic Ip, no public ip address",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDepl-TC8-',copyIndex())]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "avSetCopy",
+        "[concat('Microsoft.Resources/deployments/',variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('lb2Name'),'elbDeployment-TestCase2')]"
+      ],
+      "copy": {
+        "name": "testCase8Copy",
+        "count": 3
+      },
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "completeVmNameProvided": {
+            "value": "yes"
+          },
+          "vmNamePrefix": {
+            "value": "[concat('VmTESTCASE8-',copyIndex(1))]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "adminUserName": {
+            "value": "[parameters('adminUserName')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "vmCount": {
+            "value": 1
+          },
+          "imageInfo": {
+            "value": "[variables('imageInfo')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "attachDataDisks": {
+            "value": "yes"
+          },
+          "dataDiskCount": {
+            "value": 2
+          },
+          "dataDiskSizeGb": {
+            "value": 10
+          },
+          "useAvailabilitySet": {
+            "value": "yes"
+          },
+          "avSetId": {
+            "value": "[resourceId('Microsoft.Compute/availabilitySets','avSet002-AVSET')]"
+          },
+          "subnetId": {
+            "value": "[variables('subnetId')]"
+          },
+          "usePublicIpAddress": {
+            "value": "no"
+          },
+          "includeVmInLoadBalancerBe": {
+            "value": "yes"
+          },
+          "loadBalancerBackEndAddressPoolId": {
+            "value": "[variables('lb2Rules')[0].properties.backendAddressPool.Id]"
+          },
+          "assignVmsToLoadBalancerNatRule": {
+            "value": "yes"
+          },
+          "loadBalancerNatRuleId": {
+            "value": "[concat(resourceid('Microsoft.Network/loadBalancers',variables('lb2Name')), '/inboundNatRules/',variables('lb2natRules').lb2natCopy[copyIndex()].name)]"
+          },
+          "attachNsg": {
+            "value": "yes"
+          },
+          "nsgId": {
+            "value": "[variables('nsgId')]"
+          },
+          "configureDnsServers": {
+            "value": "yes"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          },
+          "privateIpAddressType": {
+            "value": "Dynamic"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 9 - Single VM, update DNS Settings",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase9')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase5')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('updateVmDnsUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "vmId": {
+            "value": "[resourceId('Microsoft.Compute/virtualMachines','VmTESTCASE5FNL')]"
+          },
+          "dnsServers": {
+            "value": [
+              "192.168.0.1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "Virtual Machine Test Cases - Test-Case 10 - Single VM, change VM Ip address type to Static",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase10')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase5')]",
+        "[concat(variables('deploymentUniqueString'),'-','vmsDeployment-TestCase9')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('changeVmPrivateIpAddressTypeUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "vmId": {
+            "value": "[resourceId('Microsoft.Compute/virtualMachines','VmTESTCASE5FNL')]"
+          },
+          "privateIpAddressType": {
+            "value": "Static"
+          },
+          "nicOptionalAttributeSet": {
+            "value": "nsg"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 0 - Dynamic public Ip for VPNGW1",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('gw1PipName'),'pipDeployment-TestCase0')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('publicIpAddressBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[variables('gw1Location')]"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "publicIpAddressName": {
+            "value": "[variables('gw1PipName')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 1 - Dynamic public Ip for VPNGW2",
+      "name": "[concat(variables('deploymentUniqueString'),'-',variables('gw2PipName'),'pipDeployment-TestCase1')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('publicIpAddressBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[variables('gw2Location')]"
+          },
+          "publicIpAddressType": {
+            "value": "Dynamic"
+          },
+          "publicIpAddressName": {
+            "value": "[variables('gw2PipName')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 2 - VPN Gateway 1 - RouteBased, no BGP",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase2')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('gw1PipName'),'pipDeployment-TestCase0')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnet2Name'),'vNetDeployment-TestCase4')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vpnGatewayBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[variables('gw1Location')]"
+          },
+          "gatewaySubnetId": {
+            "value": "[concat(resourceId('Microsoft.Network/virtualNetworks',variables('vnet2Name')),'/subnets/',variables('vnet2Subnet2Name'))]"
+          },
+          "gatewayName": {
+            "value": "[variables('gw1Name')]"
+          },
+          "gatewayPublicIpId": {
+            "value": "[resourceId('Microsoft.Network/publicIPAddresses',variables('gw1PipName'))]"
+          },
+          "vpnType": {
+            "value": "RouteBased"
+          },
+          "enableBGP": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 3 - VPN Gateway 2 - RouteBased, no BGP",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase3')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-',variables('gw2PipName'),'pipDeployment-TestCase1')]",
+        "[concat(variables('deploymentUniqueString'),'-',variables('vnetName'),'vNetDeployment-TestCase1')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vpnGatewayBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[variables('gw2Location')]"
+          },
+          "gatewaySubnetId": {
+            "value": "[concat(resourceId('Microsoft.Network/virtualNetworks',variables('vnetName')),'/subnets/',variables('subnet3Name'))]"
+          },
+          "gatewayName": {
+            "value": "[variables('gw2Name')]"
+          },
+          "gatewayPublicIpId": {
+            "value": "[resourceId('Microsoft.Network/publicIPAddresses',variables('gw2PipName'))]"
+          },
+          "vpnType": {
+            "value": "RouteBased"
+          },
+          "enableBGP": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 4 - VPN Gateway 1 Connection",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase4')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase2')]",
+        "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase3')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('s2sConnectionBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[variables('gw1Location')]"
+          },
+          "connectionName": {
+            "value": "[variables('conn1Name')]"
+          },
+          "sharedKey": {
+            "value": "[variables('connSharedKey')]"
+          },
+          "gateway1Id": {
+            "value": "[resourceId('Microsoft.Network/virtualNetworkGateways',variables('gw1Name'))]"
+          },
+          "gateway2Id": {
+            "value": "[resourceId('Microsoft.Network/virtualNetworkGateways',variables('gw2Name'))]"
+          }
+        }
+      }
+    },
+    {
+      "condition": false,
+      "comments": "VPN Test Cases - Test-Case 5 - VPN Gateway 2 Connection",
+      "name": "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase5')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase2')]",
+        "[concat(variables('deploymentUniqueString'),'-','vpnDeployment-TestCase3')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('s2sConnectionBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[variables('gw2Location')]"
+          },
+          "connectionName": {
+            "value": "[variables('conn2Name')]"
+          },
+          "sharedKey": {
+            "value": "[variables('connSharedKey')]"
+          },
+          "gateway1Id": {
+            "value": "[resourceId('Microsoft.Network/virtualNetworkGateways',variables('gw2Name'))]"
+          },
+          "gateway2Id": {
+            "value": "[resourceId('Microsoft.Network/virtualNetworkGateways',variables('gw1Name'))]"
+          }
+        }
+      }
+    },
+    // Obtaining the public ip address of an Application Gateway
+
+    {
+      "condition": true,
+      "comments": "Getting reference to aan app gw",
+      "name": "[concat(variables('deploymentUniqueString'),'-GetsAppGwRef')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('getRefUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "resourceId": {
+            "value": "/subscriptions/47e72075-d92c-4909-9607-5d7958aa505a/resourceGroups/test-rg/providers/Microsoft.Network/applicationGateways/appgw01"
+          },
+          "apiVersion": {
+            "value": "2017-10-01"
+          }
+        }
+      }
+    },
+    {
+      "condition": true,
+      "comments": "Getting the reference for the public ip address of the app gw",
+      "name": "[concat(variables('deploymentUniqueString'),'-GetsAppGwPipRef')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [
+        "[concat(variables('deploymentUniqueString'),'-GetsAppGwRef')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('getRefUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "resourceId": {
+            "value": "[reference(concat(variables('deploymentUniqueString'),'-GetsAppGwRef')).outputs.fullResourceObj.value.properties.frontendIPConfigurations[0].properties.publicIPAddress.id]"
+          },
+          "apiVersion": {
+            "value": "2017-10-01"
+          }
+        }
+      }
+    }
+    
+  ],
+  "outputs": {
+    "appGwPubliIpAddress": {
+      "type": "string",
+      "value": "[reference(concat(variables('deploymentUniqueString'),'-GetsAppGwPipRef')).outputs.fullResourceObj.value.properties.ipAddress]"
+    }
+
+  }
+}

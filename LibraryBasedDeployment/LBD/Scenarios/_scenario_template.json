@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_deploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated deployment name"
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Auto-generated container in staging storage account to receive post-build staging folder upload"
+      }
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Auto-generated token to access _artifactsLocation"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where the resources of this template will be deployed to"
+      },
+      "defaultValue": "eastus"
+    }
+  },
+  "variables": {
+    "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "baseUrl": "[parameters('_artifactsLocation')]",
+    "getRefUri": "[concat(variables('baseUrl'),'/library/other/getReference.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVnetDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVnetDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVmDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "changeVmPrivateIpAddressTypeUri": "[concat(variables('baseUrl'),'/library/other/changeVmIpAddressType.json',parameters('_artifactsLocationSasToken'))]",
+    "avSetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/availabilitySet.json',parameters('_artifactsLocationSasToken'))]",
+    "vmBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
+    "vmExtensionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
+    "vNetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
+    "nicBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkInterface.json',parameters('_artifactsLocationSasToken'))]",
+    "nsgBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+    "publicIpAddressBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/publicIp.json',parameters('_artifactsLocationSasToken'))]",
+    "lbBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/loadBalancer.json',parameters('_artifactsLocationSasToken'))]",
+    "vpnGatewayBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vpnGateway.json',parameters('_artifactsLocationSasToken'))]",
+    "s2sConnectionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/vnet2VnetConnection.json',parameters('_artifactsLocationSasToken'))]",
+    "joinVmToDomainUri": "[concat(variables('baseUrl'),'/library/other/joinVmToDomain.json',parameters('_artifactsLocationSasToken'))]"
+  },
+  "resources": [
+    {
+      "condition": true,
+      "comments": "Describe your resource here",
+      "name": "[concat(variables('deploymentUniqueString'),'-CompleteWithMeaningFullNameHere')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2017-05-10",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmBuildingBlockUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "deploymentUniqueString": {
+            "value": "[variables('deploymentUniqueString')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "sasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    }
+
+  ],
+  "outputs": {
+  }
+}

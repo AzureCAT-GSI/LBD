@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|AnyCPU">
+      <Configuration>Debug</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|AnyCPU">
+      <Configuration>Release</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>cee121c1-0969-48c3-9e05-9b51f110eaae</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFrameworkIdentifier>Deployment</TargetFrameworkIdentifier>
+    <TargetFrameworkVersion>1.0</TargetFrameworkVersion>
+    <PrepareForBuildDependsOn>
+    </PrepareForBuildDependsOn>
+  </PropertyGroup>
+  <Import Condition=" Exists('Deployment.targets') " Project="Deployment.targets" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  <!-- vertag<:>start tokens<:>maj.min -->
+  <Import Condition=" Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Deployment\1.1\DeploymentProject.targets') " Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Deployment\1.1\DeploymentProject.targets" />
+  <!-- vertag<:>end -->
+  <ItemGroup>
+    <Content Include="library\Microsoft.Compute\availabilitySet.json" />
+    <Content Include="library\Microsoft.Compute\vmExtension.json" />
+    <Content Include="library\Microsoft.Network\vpnGateway.json" />
+    <Content Include="library\Microsoft.Network\networkInterfaceIpAddrTypeOnly.json" />
+    <Content Include="library\Microsoft.Network\networkInterfaceDnsOnly.json" />
+    <Content Include="library\Microsoft.Network\networkInterface.json" />
+    <Content Include="library\Microsoft.Network\publicIp.json" />
+    <Content Include="library\Microsoft.Network\virtualNetwork.json" />
+    <None Include="Deployment.targets">
+      <Visible>False</Visible>
+    </None>
+    <Content Include="Deploy-AzureResourceGroup.ps1" />
+    <Content Include="dsc\cDisk\cDisk.psd1" />
+    <Content Include="dsc\cDisk\DSCResources\SAMPLE_cDiskNoRestart\SAMPLE_cDiskNoRestart.psm1" />
+    <Content Include="dsc\cDisk\DSCResources\SAMPLE_cDiskNoRestart\SAMPLE_cDiskNoRestart.schema.mof" />
+    <Content Include="dsc\DCConfig.ps1" />
+    <Content Include="dsc\IISInstall.ps1" />
+    <Content Include="dsc\ProvisionDcVm.ps1" />
+    <Content Include="dsc\xComputerManagement\appveyor.yml" />
+    <Content Include="dsc\xComputerManagement\DSCResources\MSFT_xComputer\MSFT_xComputer.psm1" />
+    <Content Include="dsc\xComputerManagement\DSCResources\MSFT_xComputer\MSFT_xComputer.schema.mof" />
+    <Content Include="dsc\xComputerManagement\LICENSE" />
+    <Content Include="dsc\xComputerManagement\README.md" />
+    <Content Include="dsc\xComputerManagement\Tests\xComputermanagement.Tests.ps1" />
+    <Content Include="dsc\xComputerManagement\xComputerManagement.psd1" />
+    <Content Include="dsc\xDisk\DSCResources\MSFT_xDisk\MSFT_xDisk.psm1" />
+    <Content Include="dsc\xDisk\DSCResources\MSFT_xDisk\MSFT_xDisk.schema.mof" />
+    <Content Include="dsc\xDisk\DSCResources\MSFT_xWaitForDisk\MSFT_xWaitForDisk.psm1" />
+    <Content Include="dsc\xDisk\DSCResources\MSFT_xWaitForDisk\MSFT_xWaitForDisk.schema.mof" />
+    <Content Include="dsc\xDisk\PSGetModuleInfo.xml" />
+    <Content Include="dsc\xDisk\xDisk.psd1" />
+    <Content Include="dsc\xDisk\xDisk_Documentation.html" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xDNSServerAddress\MSFT_xDNSServerAddress.psm1" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xDNSServerAddress\MSFT_xDNSServerAddress.schema.mof" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xFirewall\MSFT_xFirewall.psm1" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xFirewall\MSFT_xFirewall.Schema.mof" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xIPAddress\MSFT_xIPAddress.psm1" />
+    <Content Include="dsc\xNetworking\DSCResources\MSFT_xIPAddress\MSFT_xIPAddress.schema.mof" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xDnsServerAddress.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xFirewall_AddFirewallRule.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xFirewall_AddFirewallRuleToExistingGroup.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xFirewall_AddFirewallRuleToNewGroup.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xFirewall_DisableAccessToApplication.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xIPAddress_FixedValue.ps1" />
+    <Content Include="dsc\xNetworking\Examples\Sample_xIPAddress_Parameterized.ps1" />
+    <Content Include="dsc\xNetworking\xNetworking.psd1" />
+    <Content Include="dsc\xNetworking\xNetworking_TechNetDocumentation.html" />
+    <Content Include="library\Microsoft.Network\vnet2VnetConnection.json" />
+    <Content Include="library\Microsoft.Network\loadBalancer.json" />
+    <Content Include="library\Microsoft.Network\networkSecurityGroup.json" />
+    <Content Include="library\Microsoft.Compute\virtualMachine.json" />
+    <Content Include="library\other\setVmIpAddressType.json" />
+    <Content Include="library\other\setVmDnsSettings.json" />
+    <Content Include="library\other\changeVmIpAddressType.json" />
+    <Content Include="library\other\updateVmDnsSettings.json" />
+    <Content Include="Scenarios\Scenario3.json" />
+    <Content Include="Scenarios\Scenario3.parameters.json" />
+    <Content Include="Scenarios\Scenario2.json" />
+    <Content Include="Scenarios\Scenario2.parameters.json" />
+    <Content Include="Scenarios\_scenario_template.parameters.json" />
+    <Content Include="Scenarios\Scenario1.json" />
+    <Content Include="Scenarios\Scenario1.parameters.json" />
+    <Content Include="TestCases\TestCases.parameters.json" />
+    <Content Include="TestCases\TestCases.json" />
+    <Content Include="Scenarios\_scenario_template.json" />
+    <Content Include="library\other\getReference.json" />
+    <Content Include="library\other\updateVnetDnsSettings.json" />
+    <Content Include="dsc\xActiveDirectory\.gitignore" />
+    <Content Include="dsc\xActiveDirectory\appveyor.yml" />
+    <Content Include="dsc\xActiveDirectory\Assert-HADC.ps1" />
+    <Content Include="dsc\xActiveDirectory\Assert-ParentChildDomains.ps1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADCommon\MSFT_xADCommon.ps1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADCommon\MSFT_xADCommon.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADComputer\en-US\MSFT_xADComputer.psd1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADComputer\MSFT_xADComputer.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADComputer\MSFT_xADComputer.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainController\MSFT_xADDomainController.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainController\MSFT_xADDomainController.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainDefaultPasswordPolicy\MSFT_xADDomainDefaultPasswordPolicy.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainDefaultPasswordPolicy\MSFT_xADDomainDefaultPasswordPolicy.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainTrust\MSFT_xADDomainTrust.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomainTrust\MSFT_xADDomainTrust.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomain\MSFT_xADDomain.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADDomain\MSFT_xADDomain.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADGroup\MSFT_xADGroup.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADGroup\MSFT_xADGroup.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADOrganizationalUnit\MSFT_xADOrganizationalUnit.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADOrganizationalUnit\MSFT_xADOrganizationalUnit.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADRecycleBin\Examples\xActiveDirectory_xADRecycleBin.ps1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADRecycleBin\MSFT_xADRecycleBin.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADRecycleBin\MSFT_xADRecycleBin.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADRecycleBin\ResourceDesignerScripts\GeneratexADRecycleBinSchema.ps1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADUser\MSFT_xADUser.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xADUser\MSFT_xADUser.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xWaitForADDomain\MSFT_xWaitForADDomain.psm1" />
+    <Content Include="dsc\xActiveDirectory\DSCResources\MSFT_xWaitForADDomain\MSFT_xWaitForADDomain.schema.mof" />
+    <Content Include="dsc\xActiveDirectory\HADCConfiguration.psd1" />
+    <Content Include="dsc\xActiveDirectory\LICENSE" />
+    <Content Include="dsc\xActiveDirectory\Misc\New-ADDomainTrust.ps1" />
+    <Content Include="dsc\xActiveDirectory\ParentChildConfig.psd1" />
+    <Content Include="dsc\xActiveDirectory\README.md" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADCommon.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADComputer.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADDomain.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADDomainController.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADDomainDefaultPasswordPolicy.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADGroup.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADOrganizationalUnit.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xADUser.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\Tests\Unit\MSFT_xWaitForADDomain.Tests.ps1" />
+    <Content Include="dsc\xActiveDirectory\xActiveDirectory.psd1" />
+    <Content Include="dsc\xActiveDirectory\xActiveDirectory_TechNetDocumentation.html" />
+    <Content Include="library\other\joinVmToDomain.json" />
+    <None Include="README.MD" />
+  </ItemGroup>
+  <Target Name="GetReferenceAssemblyPaths" />
+</Project>
