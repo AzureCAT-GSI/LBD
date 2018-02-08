@@ -9,7 +9,7 @@ LBD is meant for those who still wants to simplify its resource manager template
 
 1) Create a deployment solution with Visual Studio 2017
 2) When consuming templates from this solution we need to provide a unique string every time we perform a deployment, so troubleshooting gets easier and we avoid issues of deployment names already there. Replace the default VS 2017 Depployment script Deploy-AzureResourceGroup.ps1 with the one provided in this solution, located at https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD/Deploy-AzureResourceGroup.ps1.
-3) Use the template file \_scenario_template.json located at https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD/Scenarios/\_scenario_template.json as your starting point since this template of template contain the URLs for all library items you can use plus a base deployment resource where the only optional parameter is the sasToken. 
+3) Use the template file \_scenario_template.json located at https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD/Scenarios/_scenario_template.json as your starting point since this template of template contain the URLs for all library items you can use plus a base deployment resource where the only optional parameter is the sasToken. 
 
 ## Examples
 
