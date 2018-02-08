@@ -88,11 +88,11 @@
     "deploymentUniqueString": "[uniqueString(concat(deployment().name,resourceGroup().id))]",
     "libraryBaseUrl": "https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD",
     "baseUrl": "[parameters('_artifactsLocation')]",
-    "updateVmDnsUri": "[concat(variables('libraryBaseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
-    "vmBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
-    "vmExtensionBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
-    "vNetBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
-    "nsgBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVmDnsUri": "[concat(variables('libraryBaseUrl'),'/library/other/updateVmDnsSettings.json')]",
+    "vmBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/virtualMachine.json')]",
+    "vmExtensionBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/vmExtension.json')]",
+    "vNetBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/virtualNetwork.json')]",
+    "nsgBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json')]",
 
     "imageInfo": {
       "publisher": "MicrosoftWindowsServer",
