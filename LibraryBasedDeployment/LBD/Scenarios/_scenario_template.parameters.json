@@ -2,13 +2,5 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-     "adminPassword": {
-      "reference": {
-        "keyVault": {
-          "id": "/subscriptions/47e72075-d92c-4909-9607-5d7958aa505a/resourceGroups/pmcrg01/providers/Microsoft.KeyVault/vaults/pmcKeyVault"
-        },
-        "secretName": "AdminPassword"
-      }
-    }
   }
 }

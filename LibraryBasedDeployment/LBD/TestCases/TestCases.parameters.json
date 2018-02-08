@@ -5,17 +5,8 @@
     "vmSize": {
       "value": "Standard_D1_V2"
     },
-    "adminPassword": {
-      "reference": {
-        "keyVault": {
-          "id": "/subscriptions/47e72075-d92c-4909-9607-5d7958aa505a/resourceGroups/pmcrg01/providers/Microsoft.KeyVault/vaults/pmcKeyVault"
-        },
-        "secretName": "AdminPassword"
-      }
-    },
     "vmCount": {
       "value": 1
     }
-     
   }
 }

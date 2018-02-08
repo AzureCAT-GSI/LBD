@@ -2,7 +2,7 @@
 
 Param(
     [string] [Parameter(Mandatory=$true)] $ResourceGroupLocation,
-    [string] $ResourceGroupName = 'AzureResourceGroup3',
+    [string] $ResourceGroupName = 'AppModernization',
     [switch] $UploadArtifacts,
     [string] $StorageAccountName,
     [string] $StorageContainerName = $ResourceGroupName.ToLowerInvariant() + '-stageartifacts',
@@ -93,17 +93,6 @@ if ($UploadArtifacts) {
 New-AzureRmResourceGroup -Name $ResourceGroupName -Location $ResourceGroupLocation -Verbose -Force
 
 if ($ValidateOnly) {
-
-	# Edits from the original script
-	$deploymentName='_deploymentName'
-	$deploymentNameValue=((Get-ChildItem $TemplateFile).BaseName + '-' + ((Get-Date).ToUniversalTime()).ToString('MMdd-HHmm'))
-	
-	if ($OptionalParameters[$deploymentName] -eq $null)
-	{
-        $OptionalParameters[$deploymentName] = $deploymentNameValue
-    }
-	# Edits end
-
     $ErrorMessages = Format-ValidationOutput (Test-AzureRmResourceGroupDeployment -ResourceGroupName $ResourceGroupName `
                                                                                   -TemplateFile $TemplateFile `
                                                                                   -TemplateParameterFile $TemplateParametersFile `
@@ -116,25 +105,13 @@ if ($ValidateOnly) {
     }
 }
 else {
-
-	# Edits from the original script
-	$deploymentName='_deploymentName'
-	$deploymentNameValue=((Get-ChildItem $TemplateFile).BaseName + '-' + ((Get-Date).ToUniversalTime()).ToString('MMdd-HHmm'))
-
-	if ($OptionalParameters[$deploymentName] -eq $null)
-	{
-        $OptionalParameters[$deploymentName] = $deploymentNameValue
-    }
-
-    New-AzureRmResourceGroupDeployment -Name $deploymentNameValue `
+    New-AzureRmResourceGroupDeployment -Name ((Get-ChildItem $TemplateFile).BaseName + '-' + ((Get-Date).ToUniversalTime()).ToString('MMdd-HHmm')) `
                                        -ResourceGroupName $ResourceGroupName `
                                        -TemplateFile $TemplateFile `
                                        -TemplateParameterFile $TemplateParametersFile `
                                        @OptionalParameters `
                                        -Force -Verbose `
                                        -ErrorVariable ErrorMessages
-	# Edits end
-
     if ($ErrorMessages) {
         Write-Output '', 'Template deployment returned the following errors:', @(@($ErrorMessages) | ForEach-Object { $_.Exception.Message.TrimEnd("`r`n") })
     }

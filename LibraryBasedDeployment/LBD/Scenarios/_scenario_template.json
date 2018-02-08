@@ -2,12 +2,6 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "_deploymentName": {
-      "type": "string",
-      "metadata": {
-        "description": "Auto-generated deployment name"
-      }
-    },
     "_artifactsLocation": {
       "type": "string",
       "metadata": {
@@ -29,7 +23,7 @@
     }
   },
   "variables": {
-    "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "deploymentUniqueString": "[uniqueString(concat(deployment().name,resourceGroup().id))]",
     "libraryBaseUrl": "https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD",
     "getRefUri": "[concat(variables('libraryBaseUrl'),'/library/other/getReference.json',parameters('_artifactsLocationSasToken'))]",
     "updateVnetDnsUri": "[concat(variables('libraryBaseUrl'),'/library/other/updateVnetDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
