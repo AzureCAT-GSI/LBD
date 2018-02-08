@@ -150,7 +150,7 @@
           "location": {
             "value": "[parameters('location')]"
           },
-          "publicIpApiVersion": {
+          "apiVersion": {
             "value": "[parameters('publicIpApiVersion')]"
           },
           "publicIpAddressType": {

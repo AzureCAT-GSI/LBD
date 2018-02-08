@@ -16,7 +16,7 @@
     },
     "publicIpApiVersion": {
       "type": "string",
-      "defaultValue": "2017-05-10"
+      "defaultValue": "2017-11-01"
     },
     "deploymentUniqueString": {
       "type": "string",
