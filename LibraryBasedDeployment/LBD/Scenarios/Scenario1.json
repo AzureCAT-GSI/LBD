@@ -92,12 +92,13 @@
   },
   "variables": {
     "deploymentUniqueString": "[uniqueString(parameters('_deploymentName'))]",
+    "libraryBaseUrl": "https://raw.githubusercontent.com/AzureCAT-GSI/LBD/master/LibraryBasedDeployment/LBD",
     "baseUrl": "[parameters('_artifactsLocation')]",
-    "updateVmDnsUri": "[concat(variables('baseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
-    "vmBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
-    "vmExtensionBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
-    "vNetBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
-    "nsgBuildingBlockUri": "[concat(variables('baseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
+    "updateVmDnsUri": "[concat(variables('libraryBaseUrl'),'/library/other/updateVmDnsSettings.json',parameters('_artifactsLocationSasToken'))]",
+    "vmBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/virtualMachine.json',parameters('_artifactsLocationSasToken'))]",
+    "vmExtensionBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Compute/vmExtension.json',parameters('_artifactsLocationSasToken'))]",
+    "vNetBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/virtualNetwork.json',parameters('_artifactsLocationSasToken'))]",
+    "nsgBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/networkSecurityGroup.json',parameters('_artifactsLocationSasToken'))]",
 
     "imageInfo": {
       "publisher": "MicrosoftWindowsServer",
