@@ -2,8 +2,17 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "vnetApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-03-30"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "sasToken": {
       "type": "string",
@@ -30,7 +39,7 @@
       "comments": "Getting a reference for a vnet",
       "name": "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -69,6 +78,9 @@
           "contentVersion": "1.0.0.0"
         },
         "parameters": {
+          "apiVersion": {
+            "value": "[parameters('vnetApiVersion')]"
+          },
           "deploymentUniqueString": {
             "value": "[parameters('deploymentUniqueString')]"
           },

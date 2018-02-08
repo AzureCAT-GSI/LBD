@@ -2,8 +2,17 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "nicApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "sasToken": {
       "type": "string",
@@ -56,7 +65,7 @@
       "comments": "Getting reference for a VM",
       "name": "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -83,7 +92,7 @@
       "comments": "Changes the Private IP Address Type of a VM to Static or Dynamic",
       "name": "[concat(parameters('deploymentUniqueString'),'-vmIpAddresstypeChange')]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -94,6 +103,12 @@
           "contentVersion": "1.0.0.0"
         },
         "parameters": {
+          "nicApiVersion": {
+            "value": "[parameters('nicApiVersion')]"
+          },
+          "deploymentApiVersion": {
+            "value": "[parameters('deploymentApiVersion')]"
+          },
           "deploymentUniqueString": {
             "value": "[parameters('deploymentUniqueString')]"
           },

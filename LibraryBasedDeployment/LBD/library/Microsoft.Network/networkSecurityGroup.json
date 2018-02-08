@@ -2,8 +2,13 @@
   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "apiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "location": {
       "type": "string",
@@ -31,7 +36,7 @@
       "comments": "Network Security Group",
       "type": "Microsoft.Network/networkSecurityGroups",
       "name": "[parameters('nsgName')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('apiVersion')]",
       "location": "[parameters('location')]",
       "properties": {
         "securityRules": "[parameters('securityRules')]"

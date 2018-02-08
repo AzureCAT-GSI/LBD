@@ -2,6 +2,10 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "apiVersion": {
+      "type": "string",
+      "defaultValue": "2015-06-15"
+    },
     "location": {
       "type": "string"
     },
@@ -21,6 +25,10 @@
         "dsc"
       ]
     },
+    "dscTypeHandlerVersion": {
+      "type": "string",
+      "defaultValue": "2.73"
+    },
     "settings": {
       "type": "object"
     },
@@ -36,12 +44,12 @@
       "condition": "[equals(parameters('extensionType'),'dsc')]",
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "name": "[if(equals(parameters('extensionType'),'dsc'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),'invalid1')]",
-      "apiVersion": "2015-06-15",
+      "apiVersion": "[parameters('apiVersion')]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Powershell",
         "type": "DSC",
-        "typeHandlerVersion": "2.73",
+        "typeHandlerVersion": "[parameters('dscTypeHandlerVersion')]",
         "autoUpgradeMinorVersion": true,
         "settings": "[parameters('settings')]",
         "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"

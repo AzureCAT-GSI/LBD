@@ -2,8 +2,13 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "apiVersion": {
+      "type": "string",
+      "defaultValue": "2017-03-01"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "location": {
       "type": "string"
@@ -50,7 +55,7 @@
       "name": "[if(not(parameters('enableBGP')),parameters('gatewayName'),'ignore1')]",
       "type": "Microsoft.Network/virtualNetworkGateways",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-03-01",
+      "apiVersion": "[parameters('apiVersion')]",
       "properties": {
         "ipConfigurations": [
           {
@@ -76,7 +81,7 @@
       "name": "[if(and(parameters('enableBGP'),equals(parameters('vpnType'),'RouteBased')),parameters('gatewayName'),'ignore2')]",
       "type": "Microsoft.Network/virtualNetworkGateways",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-03-01",
+      "apiVersion": "[parameters('apiVersion')]",
       "properties": {
         "ipConfigurations": [
           {

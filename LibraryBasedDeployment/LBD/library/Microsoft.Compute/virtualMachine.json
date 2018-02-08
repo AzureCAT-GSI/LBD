@@ -2,8 +2,25 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "vmApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-03-30"
+    },
+    "nicApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
+    "publicIpApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "sasToken": {
       "type": "string",
@@ -169,7 +186,7 @@
       "condition": "[greater(parameters('vmCount'),1)]",
       "name": "[if(greater(parameters('vmCount'),1),concat(parameters('deploymentUniqueString'),'-',if(equals(parameters('completeVmNameProvided'),'no'),concat(parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0')), parameters('vmNamePrefix')),'nicDeployment'),concat('ignore',copyIndex(1)))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "copy": {
         "name": "nicCopy",
         "count": "[parameters('vmCount')]"
@@ -183,6 +200,12 @@
         "parameters": {
           "deploymentUniqueString": {
             "value": "[parameters('deploymentUniqueString')]"
+          },
+          "nicApiVersion": {
+            "value": "[parameters('nicApiVersion')]"
+          },
+          "publicIpApiVersion": {
+            "value": "[parameters('publicIpApiVersion')]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -246,6 +269,12 @@
           "deploymentUniqueString": {
             "value": "[parameters('deploymentUniqueString')]"
           },
+          "nicApiVersion": {
+            "value": "[parameters('nicApiVersion')]"
+          },
+          "publicIpApiVersion": {
+            "value": "[parameters('publicIpApiVersion')]"
+          },
           "location": {
             "value": "[parameters('location')]"
           },
@@ -300,7 +329,7 @@
     {
       "comments": "Deploying a virtual machine - with datadisk",
       "condition": "[equals(parameters('attachDataDisks'),'yes')]",
-      "apiVersion": "2017-03-30",
+      "apiVersion": "[parameters('vmApiVersion')]",
       "type": "Microsoft.Compute/virtualMachines",
       "name": "[if(equals(parameters('attachDataDisks'),'yes'),if(equals(parameters('completeVmNameProvided'),'no'),concat(parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0')), parameters('vmNamePrefix')),concat('ignore',copyIndex(1)))]",
       "location": "[parameters('location')]",
@@ -357,7 +386,7 @@
     {
       "comments": "Deploying a virtual machine - no datadisk",
       "condition": "[equals(parameters('attachDataDisks'),'no')]",
-      "apiVersion": "2017-03-30",
+      "apiVersion": "[parameters('vmApiVersion')]",
       "type": "Microsoft.Compute/virtualMachines",
       "name": "[if(equals(parameters('attachDataDisks'),'no'),if(equals(parameters('completeVmNameProvided'),'no'),concat(parameters('vmNamePrefix'),padLeft(copyIndex(1),3,'0')), parameters('vmNamePrefix')),concat('ignore',copyIndex(1)))]",
       "location": "[parameters('location')]",

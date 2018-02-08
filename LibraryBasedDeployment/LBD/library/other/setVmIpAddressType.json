@@ -2,8 +2,17 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "nicApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "sasToken": {
       "type": "string",
@@ -54,7 +63,7 @@
       "comments": "Updates a VM network interface IpConfig1 to related Private IP Address Type",
       "name": "[concat(parameters('deploymentUniqueString'),'-setVmIpAddrType',copyIndex())]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "copy": {
         "name": "vmIpAddressTypeChangeCopy",
         "count": "[variables('nicCount')]"
@@ -66,6 +75,12 @@
           "contentVersion": "1.0.0.0"
         },
         "parameters": {
+          "nicApiVersion": {
+            "value": "[parameters('nicApiVersion')]"
+          },
+          "deploymentApiVersion": {
+            "value": "[parameters('deploymentApiVersion')]"
+          },
           "deploymentUniqueString": {
             "value": "[parameters('deploymentUniqueString')]"
           },

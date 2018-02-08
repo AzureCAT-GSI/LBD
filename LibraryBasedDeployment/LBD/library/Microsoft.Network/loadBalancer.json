@@ -2,8 +2,13 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "apiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "location": {
       "type": "string"
@@ -53,7 +58,7 @@
     {
       "condition": "[equals(parameters('externalLoadBalancer'),'yes')]",
       "comments": "External Load Balancer Configuration",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('apiVersion')]",
       "name": "[if(equals(parameters('externalLoadBalancer'),'yes'),parameters('lbName'),'invalid1')]",
       "type": "Microsoft.Network/loadBalancers",
       "location": "[parameters('location')]",
@@ -81,7 +86,7 @@
     {
       "condition": "[equals(parameters('externalLoadBalancer'),'no')]",
       "comments": "Internal Load Balancer Configuration",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('apiVersion')]",
       "name": "[if(equals(parameters('externalLoadBalancer'),'no'),parameters('lbName'),'invalid1')]",
       "type": "Microsoft.Network/loadBalancers",
       "location": "[parameters('location')]",

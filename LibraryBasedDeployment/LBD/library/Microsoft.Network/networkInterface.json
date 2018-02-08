@@ -2,8 +2,21 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "nicApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
+    "publicIpApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "location": {
       "type": "string"
@@ -126,7 +139,7 @@
       "condition": "[equals(parameters('usePublicIpAddress'),'yes')]",
       "name": "[concat(parameters('deploymentUniqueString'),'-pipFromNic-',parameters('nicName'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -136,6 +149,9 @@
         "parameters": {
           "location": {
             "value": "[parameters('location')]"
+          },
+          "publicIpApiVersion": {
+            "value": "[parameters('publicIpApiVersion')]"
           },
           "publicIpAddressType": {
             "value": "[parameters('publicIpAddressType')]"
@@ -151,7 +167,7 @@
       "name": "[parameters('nicName')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-pipFromNic-',parameters('nicName'))]"
       ],

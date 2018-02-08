@@ -2,8 +2,17 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "nicApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-06-01"
+    },
+    "deploymentApiVersion": {
+      "type": "string",
+      "defaultValue": "2017-05-10"
+    },
     "deploymentUniqueString": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": ""
     },
     "location": {
       "type": "string"
@@ -58,7 +67,7 @@
       "comments": "Getting reference for the NIC",
       "name": "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2017-05-10",
+      "apiVersion": "[parameters('deploymentApiVersion')]",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -87,7 +96,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'all'),variables('nicName'),'ignore1')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -119,7 +128,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'none'),variables('nicName'),'ignore2')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -147,7 +156,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg'),variables('nicName'),'ignore3')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -177,7 +186,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-pip'),variables('nicName'),'ignore4')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -207,7 +216,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-lbBe'),variables('nicName'),'ignore5')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -237,7 +246,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-lbBe-LbNat'),variables('nicName'),'ignore6')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -268,7 +277,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-LbNat'),variables('nicName'),'ignore7')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -298,7 +307,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-pip-lbBe'),variables('nicName'),'ignore8')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -329,7 +338,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-pip-lbBe-LbNat'),variables('nicName'),'ignore9')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -361,7 +370,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-pip-LbNat'),variables('nicName'),'ignore10')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -391,7 +400,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'pip'),variables('nicName'),'ignore11')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -420,7 +429,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'pip-lbBe'),variables('nicName'),'ignore12')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -450,7 +459,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'pip-lbBe-LbNat'),variables('nicName'),'ignore13')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -481,7 +490,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'nsg-pip-LbNat'),variables('nicName'),'ignore14')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -510,7 +519,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'lbBe'),variables('nicName'),'ignore15')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -539,7 +548,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'lbBe-LbNat'),variables('nicName'),'ignore16')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
@@ -569,7 +578,7 @@
       "name": "[if(equals(parameters('nicOptionalAttributeSet'),'lbNat'),variables('nicName'),'ignore17')]",
       "type": "Microsoft.Network/networkInterfaces",
       "location": "[parameters('location')]",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "[parameters('nicApiVersion')]",
       "dependsOn": [
         "[concat(parameters('deploymentUniqueString'),'-',variables('getRefSuffix'))]"
       ],
