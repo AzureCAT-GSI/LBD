@@ -4,7 +4,7 @@
   "parameters": {
     "apiVersion": {
       "type": "string",
-      "defaultValue": "2017-03-30"
+      "defaultValue": "2016-03-30"
     },
     "deploymentUniqueString": {
       "type": "string",
