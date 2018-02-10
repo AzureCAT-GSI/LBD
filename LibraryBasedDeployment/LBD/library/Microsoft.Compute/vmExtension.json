@@ -22,12 +22,17 @@
     "extensionType": {
       "type": "string",
       "allowedValues": [
-        "dsc"
+        "dsc",
+        "customScriptExtension"
       ]
     },
     "dscTypeHandlerVersion": {
       "type": "string",
       "defaultValue": "2.73"
+    },
+    "customScriptExtensionTypeHandlerVersion": {
+      "type": "string",
+      "defaultValue": "1.9"
     },
     "settings": {
       "type": "object"
@@ -50,6 +55,21 @@
         "publisher": "Microsoft.Powershell",
         "type": "DSC",
         "typeHandlerVersion": "[parameters('dscTypeHandlerVersion')]",
+        "autoUpgradeMinorVersion": true,
+        "settings": "[parameters('settings')]",
+        "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"
+      }
+    },
+    {
+      "condition": "[equals(parameters('extensionType'),'customScriptExtension')]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[if(equals(parameters('extensionType'),'customScriptExtension'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),'invalid2')]",
+      "apiVersion": "[parameters('apiVersion')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "[parameters('customScriptExtensionTypeHandlerVersion')]",
         "autoUpgradeMinorVersion": true,
         "settings": "[parameters('settings')]",
         "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"
