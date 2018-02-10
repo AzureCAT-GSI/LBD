@@ -48,7 +48,7 @@
     {
       "condition": "[equals(parameters('extensionType'),'dsc')]",
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "name": "[if(equals(parameters('extensionType'),'dsc'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),'invalid1')]",
+      "name": "[if(equals(parameters('extensionType'),'dsc'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),concat(parameters('vmName'),'/','invalid1'))]",
       "apiVersion": "[parameters('apiVersion')]",
       "location": "[parameters('location')]",
       "properties": {
@@ -63,7 +63,7 @@
     {
       "condition": "[equals(parameters('extensionType'),'customScriptExtension')]",
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "name": "[if(equals(parameters('extensionType'),'customScriptExtension'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),'invalid2')]",
+      "name": "[if(equals(parameters('extensionType'),'customScriptExtension'),concat(parameters('vmName'),'/',parameters('extensionFriendlyName')),concat(parameters('vmName'),'/','invalid2'))]",
       "apiVersion": "[parameters('apiVersion')]",
       "location": "[parameters('location')]",
       "properties": {
