@@ -40,6 +40,10 @@
     "protectedSettings": {
       "type": "object",
       "defaultValue": {}
+    },
+    "autoUpgradeMinorVersion": {
+      "type": "bool",
+      "defaultValue": true
     }
   },
   "variables": {
@@ -55,7 +59,7 @@
         "publisher": "Microsoft.Powershell",
         "type": "DSC",
         "typeHandlerVersion": "[parameters('dscTypeHandlerVersion')]",
-        "autoUpgradeMinorVersion": true,
+        "autoUpgradeMinorVersion": "[parameters('autoUpgradeMinorVersion')]",
         "settings": "[parameters('settings')]",
         "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"
       }
@@ -70,7 +74,7 @@
         "publisher": "Microsoft.Compute",
         "type": "CustomScriptExtension",
         "typeHandlerVersion": "[parameters('customScriptExtensionTypeHandlerVersion')]",
-        "autoUpgradeMinorVersion": true,
+        "autoUpgradeMinorVersion": "[parameters('autoUpgradeMinorVersion')]",
         "settings": "[parameters('settings')]",
         "protectedSettings": "[if(equals(parameters('protectedSettings'),json('null')),json('null'),parameters('protectedSettings'))]"
       }
