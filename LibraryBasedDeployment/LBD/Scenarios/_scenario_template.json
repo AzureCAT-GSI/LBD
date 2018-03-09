@@ -39,7 +39,8 @@
     "lbBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/loadBalancer.json')]",
     "vpnGatewayBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/vpnGateway.json')]",
     "s2sConnectionBuildingBlockUri": "[concat(variables('libraryBaseUrl'),'/library/Microsoft.Network/vnet2VnetConnection.json')]",
-    "joinVmToDomainUri": "[concat(variables('libraryBaseUrl'),'/library/other/joinVmToDomain.json')]"
+    "joinVmToDomainUri": "[concat(variables('libraryBaseUrl'),'/library/other/joinVmToDomain.json')]",
+    "applicationGatewayUri": "[concat(variables('libraryBaseUrl'),'/library/other/joinVmToDomain.json')]"
   },
   "resources": [
     {
