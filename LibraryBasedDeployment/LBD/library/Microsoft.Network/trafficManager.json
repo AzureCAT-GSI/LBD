@@ -10,9 +10,6 @@
             "type": "string",
             "defaultValue": ""
         },
-        "location": {
-            "type": "string"
-        },
         "name": {
             "type": "string"
         },
