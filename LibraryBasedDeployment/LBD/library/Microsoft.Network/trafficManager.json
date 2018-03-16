@@ -29,7 +29,7 @@
     },
     "resources": [
         {
-            "apiVersion": "[variables('apiVersion')]",
+            "apiVersion": "[parameters('apiVersion')]",
             "type": "Microsoft.Network/trafficmanagerprofiles",
             "name": "[parameters('name')]",
             "location": "global",
